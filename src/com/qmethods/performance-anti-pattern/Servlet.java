@@ -1,4 +1,4 @@
-package com.qmethods.java_performance_antipattern_servlet;
+package com.qmethods.performance-anti-pattern;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -11,9 +11,14 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-
+/**
+ * Ein Hello-World-Programm in Java.
+  *
+ * @author nikolai.moesus@qmethods.com
+ * @version 1.0
+ */
 @WebServlet("/Performer")
-public class Performer extends HttpServlet {
+public class Servlet extends HttpServlet {
 	private static final long serialVersionUID = 123321123L;
 	private static final String[] availableCases = {
 			"concatStringsPlus",
@@ -29,13 +34,12 @@ public class Performer extends HttpServlet {
 	private static boolean sleep;
 	private static long timeExpired;
 
-	public Performer() {
+	public Servlet() {
 		super();
 	}
 
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException
-	{
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException	{
+		
 		/* prepare HTML writer */
 		response.setContentType("text/html");
 		PrintWriter printWriter = response.getWriter();
@@ -211,4 +215,6 @@ public class Performer extends HttpServlet {
 		}
 		return 42;
 	}
+	
+	
 }

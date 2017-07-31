@@ -1,0 +1,341 @@
+<project name="QFINANCE | QMETHODS - Business &amp; IT Consulting GmbH" default="build_war" basedir=".">
+	<description>matthias.scholze@qmethods.com</description>
+
+	<!-- set global properties for this build -->
+	<property file="${user.name}_${os.name}"/>
+
+	<property name="src" location="src"/>
+	<property name="srcgen" location="srcgen"/>
+	<property name="build" location="bin"/>
+	<property name="dist" location="dist"/>
+	<property name="lib" location="lib"/>
+	<property name="doc" location="doc"/>
+	<property name="conf" location="conf"/>
+	<property name="webapp" location="webapp"/>
+	<property name="reports" value="reports"/>
+	<property name="app-name" value="qfinance"/> 
+	<property name="env" value="env"/>
+
+
+	<property name="catalina.entest.user"     value="admin"/>
+	<property name="catalina.entest.password" value="admin"/>
+	<property name="catalina.entest.manager"  value="http://localhost:8888/manager"/>
+
+	<property name="catalina.prod.user"     value="admin"/>
+	<property name="catalina.prod.password" value="Terra123"/>
+	<property name="catalina.prod.manager"  value="http://192.168.0.47:8080/manager"/>
+
+
+	<path id="compile.classpath">
+	    <fileset dir="${build}">
+	      <include name="**/*.*"/>
+	    </fileset>
+	</path>
+
+	<path id="library.classpath">
+		<!-- PMD - static code analyse -->
+		<fileset dir="./env/lib/pmd-4.2.4/">
+		<include name="*.jar"/>
+		</fileset>
+		
+		<pathelement location="${lib}/cayenne.jar"/>		
+		<pathelement location="${lib}/cayenne-nodeps.jar"/>		
+		<pathelement location="${lib}/cayenne-client-nodeps.jar"/>		
+		<pathelement location="${lib}/commons-logging-1.1.1.jar"/>
+		<pathelement location="${lib}/log4j-1.2.12.jar"/>
+		<pathelement location="${lib}/servlet-api-2.5-6.1.3.jar"/>
+		<pathelement location="${lib}/commons-fileupload-1.2.1.jar"/>
+		<pathelement location="${lib}/commons-digester-2.0.jar"/>
+		<pathelement location="${lib}/commons-beanutils-1.8.0.jar"/>		
+		<pathelement location="${lib}/mysql-connector-java-5.0.8-bin.jar"/>		
+		<pathelement location="${lib}/xerces-J_1.4.0.jar"/>				
+<!--
+		<pathelement location="${lib}/iText-2.1.4.jar"/>				
+		<pathelement location="${lib}/jasperreports-3.5.3.jar"/>
+-->
+		<pathelement location="${lib}/iText-2.1.7.jar"/>				
+		<pathelement location="${lib}/jasperreports-4.7.0.jar"/>		
+		<pathelement location="${lib}/groovy-all-1.7.5.jar"/>		
+		
+
+		<!-- include cataline deployer libs -->
+		<fileset dir="${env}/apache-tomcat-6.0.35-deployer">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+
+
+		<!-- ==================== -->
+		<!-- TOMCAT 6.0.35 DEPLOY -->
+		<!-- ==================== -->
+		<taskdef resource="org/apache/catalina/ant/catalina.tasks" classpathref="library.classpath" />
+		
+		
+		<!-- ======== -->
+		<!-- PMD TASK -->
+		<!-- ======== -->
+		<taskdef name="pmd" classname="net.sourceforge.pmd.ant.PMDTask" classpathref="library.classpath"/>
+
+	
+		<!-- ============ -->
+		<!-- CAYENNE TASK -->
+		<!-- ============ -->
+		<typedef resource="org/apache/cayenne/tools/antlib.xml"> 
+		   <classpath refid="library.classpath"/> 
+		</typedef>
+
+		<taskdef name="cgen" classname="org.apache.cayenne.tools.CayenneGenerator">
+		   <classpath refid="library.classpath"/> 
+		</taskdef>
+		<taskdef name="cdbgen" classname="org.apache.cayenne.tools.DbGeneratorTask">
+		   <classpath refid="library.classpath"/> 
+		</taskdef>
+
+
+		<!-- ============== -->
+		<!-- JASPER REPORTS -->
+		<!-- ============== -->
+		<taskdef name="jrc" classname="net.sf.jasperreports.ant.JRAntCompileTask">
+		   <classpath refid="library.classpath"/> 
+		</taskdef>
+
+
+		<target name="init">
+				<echo message="#Target init"/>
+				<echo message="user.name  = ${user.name}"/>	
+				<echo message="os.name    = ${os.name}"/>
+				<echo message="tomcat.prod.url = ${catalina.prod.manager}"/>				
+				
+				<!-- Create the time stamp -->
+				<tstamp/>
+		</target>
+
+
+
+		<target name="gen_or" depends="init" description="Generate object relation mapper classes (Cayenne).">
+				<echo message="#Target generate object relation mapper classes (cayenne)"/>
+				<delete dir="${srcgen}" quiet="true"/>
+				<mkdir dir="${srcgen}"/>
+
+				<cgen map="${conf}/QFINANCE.map.xml" 
+					  destDir="${srcgen}"
+					  makepairs="true"
+					  superpkg="com.qmethods.qfinance.entity.cayenne"
+					  usepkgpath="true" 
+					  encoding="UTF-8"/>
+				<!-- Delete superclasses, this would be implemented manualy -->
+				<delete>
+					<fileset dir="${srcgen}/com/qmethods/qfinance/entity" includes="*.java"/>
+				</delete>
+		</target>
+
+
+
+
+		<target name="compile" depends="gen_or" description="Compile all source.">
+				<echo message="#Target Compile all source."/>
+				<mkdir dir="${build}"/>
+
+				<!-- Compile the java code from ${src} into ${build} -->
+				<javac debug="true" debuglevel="lines,vars,source" srcdir="${src}:${srcgen}" destdir="${build}">
+					<classpath refid="library.classpath"/>
+				</javac>
+				
+				<copy todir="${build}">
+					<fileset dir="${conf}"/>
+				</copy>
+		</target>
+
+
+<!--	
+		<target name="build_jar" depends="compile" description="Generate the distribution.">
+				<echo message="#Target dist"/>
+				<mkdir dir="${dist}"/>
+
+				<jar jarfile="${dist}/${app-name}.jar" basedir="${build}"/>
+		</target>
+-->
+
+
+
+
+		<target name="build_war" depends="compile,compileReports" description="Create a war file.">
+				<echo message="#Target Create a war file."/>
+
+				<!--  Jasper Reports kompilieren -->
+				<!-- <antcall target="compileReports"/> -->
+
+				<mkdir dir="${dist}"/>
+
+				<echo message="create new war file ${app-name}.war"/>
+				<war warfile="${dist}/${app-name}.war" webxml="${webapp}/WEB-INF/web.xml">
+					<classes dir="${build}">
+						<include name="**/*.*"/>
+						<exclude name="reports/*.*"/>
+					</classes>
+					<fileset dir="${src}">
+						<include name="ReleaseNote.txt"/>
+					</fileset>
+					<fileset dir="${build}">
+						<include name="reports/*.*"/>
+						<exclude name="com/*.*"/>
+					</fileset>
+					<!--
+					<fileset dir="${doc}">
+						<include name="QFINANCE.ppt"/>
+					</fileset>
+					-->
+					<fileset dir="${webapp}">
+						<include name="**/*.*"/>
+					</fileset>
+					<!--
+					<fileset dir="${conf}">
+						<include name="*.*"/>
+					</fileset>
+					-->
+					<lib dir="${lib}">
+						<exclude name="servlet-api-2.5-6.1.3.jar"/>
+						<exclude name="catalina-ant-jmx.jar"/>
+						<exclude name="catalina-ant.jar"/>
+					</lib>			
+				</war>
+		</target>
+
+
+
+		<target name="deploy_enttest" depends="build_war" description="Deploy a war file.">
+				
+				<echo message="#Undeploy war file at tomcat."/>
+				<undeploy url="${catalina.entest.manager}"
+						username="${catalina.entest.user}"
+						password="${catalina.entest.password}"
+						path="/${app-name}" />
+				
+				<echo message="#Deploy war file at tomcat."/>
+				<deploy url="${catalina.entest.manager}"
+						username="${catalina.entest.user}"
+						password="${catalina.entest.password}"
+						path="/${app-name}"
+						update="true"
+						localWar="file://${dist}/${app-name}.war" />
+		</target>
+
+
+		<target name="deploy_prod" depends="build_war" description="Deploy a war file.">
+
+				<echo message="#Undeploy war file at tomcat."/>
+				<undeploy url="${catalina.prod.manager}"
+						username="${catalina.prod.user}"
+						password="${catalina.prod.password}"
+						path="/${app-name}" />
+
+				<echo message="#Deploy war file at tomcat."/>
+				<deploy url="${catalina.prod.manager}"
+						username="${catalina.prod.user}"
+						password="${catalina.prod.password}"
+						path="/${app-name}"
+						update="true"
+						war="file:${dist}/${app-name}.war" />
+		</target>
+
+
+		<target name="restart_prod" depends="init" description="Restart WebApp QFINANCE.">
+				
+				<echo message="#Stop war file at tomcat."/>
+				<stop url="${catalina.prod.manager}"
+						username="${catalina.prod.user}"
+						password="${catalina.prod.password}"
+						path="/${app-name}" />
+				
+				<echo message="#Deploy war file at tomcat."/>
+				<start url="${catalina.prod.manager}"
+						username="${catalina.prod.user}"
+						password="${catalina.prod.password}"
+						path="/${app-name}"/>
+		</target>
+
+
+
+		<target name="javadoc" depends="compile" description="Generate java api documentation.">
+				<echo message="#Target Generate java api documentation."/>
+
+				<mkdir dir="${doc}/api"/>
+				<javadoc access="public" author="true"
+						classpath="${build}:${lib}/servlet-api-2.5-6.1.3.jar:${lib}/log4j-1.2.12.jar:${lib}/cayenne.jar:${lib}/commons-logging-1.1.1.jar:${lib}/commons-fileupload-1.2.1.jar"
+						destdir="${doc}/api"
+						doctitle="${app-name}" nodeprecated="false"
+						nodeprecatedlist="false" noindex="false" nonavbar="false"
+						notree="false"
+						packagenames="com.*"
+						sourcepath="${src}:${srcgen}"
+						splitindex="true"
+						use="true" version="true"/>
+		</target>
+
+	
+
+		<target name="clean" description="Clean up all temporary directories.">
+				<echo message="#Target Clean up all temporary directories."/>
+
+				<delete dir="${build}"/>
+				<delete dir="${dist}"/>
+				<delete dir="${srcgen}"/>
+		</target>	
+
+
+
+		<target name="pmd" description="Static code analyse based on PMD.">
+				<echo message="#Target Static code analyse based on PMD."/>
+
+				<mkdir dir="${doc}/pmd"/>
+				<pmd rulesetfiles="rulesets/favorites.xml">
+					<formatter type="xml"  toFile="${doc}/pmd/pmd.xml"/>			
+					<fileset dir="${src}/">
+						<include name="**/*.java"/>
+						<include name="**/*.jsp"/>
+						<include name="**/*.jsf"/>
+					</fileset>
+				</pmd>
+		</target>
+
+
+
+		<target name="compileReports" description="Jasper Konfiguration kompilieren.">
+				<!--
+					<mkdir dir="${build}/reports"/>
+				-->
+				
+				<jrc destdir="${build}">
+						<src>
+								<fileset dir="${reports}">
+									<include name="**/*.jrxml"/>
+								</fileset>
+						</src>
+						<classpath refid="library.classpath"/>
+				</jrc>
+				
+		</target>
+
+		
+	<target name="importBankData" description="Monthly import of bank data.">		
+      <java classname="com.qmethods.qfinance.imports.DKBGiro">
+         <arg value="import/DKB/giro"/>
+         <classpath refid="library.classpath">
+         </classpath>
+         <classpath>
+           <pathelement path="${build}"/>
+         </classpath>
+       </java>		
+
+      <java classname="com.qmethods.qfinance.imports.SparkasseGiro">
+         <arg value="import/Sparkasse/giro"/>
+         <classpath refid="library.classpath">
+         </classpath>
+         <classpath>
+           <pathelement path="${build}"/>
+         </classpath>
+       </java>		
+
+   </target>
+
+</project>
