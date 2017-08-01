@@ -21,6 +21,7 @@
 			<classes dir="${build-dir}"/>
 			<fileset file="WebContent/index.html"/>
 		</war>
+		<delete dir="${build-dir}"/>
 	</target>
 
 </project>
