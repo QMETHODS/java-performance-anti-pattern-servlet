@@ -1,4 +1,4 @@
-package com.qmethods.performance-anti-pattern;
+package com.qmethods.performance_anti_pattern;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -11,13 +11,15 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+
 /**
- * Ein Hello-World-Programm in Java.
-  *
+ * The Performance Antipattern Servlet is an Apache Tomcat Servlet with the purpose to create different load scenarios
+ * and to carry out micro benchmarks.
+ * 
  * @author nikolai.moesus@qmethods.com
  * @version 1.0
  */
-@WebServlet("/Performer")
+@WebServlet("/Servlet")
 public class Servlet extends HttpServlet {
 	private static final long serialVersionUID = 123321123L;
 	private static final String[] availableCases = {
@@ -38,8 +40,7 @@ public class Servlet extends HttpServlet {
 		super();
 	}
 
-	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException	{
-		
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		/* prepare HTML writer */
 		response.setContentType("text/html");
 		PrintWriter printWriter = response.getWriter();
@@ -76,16 +77,16 @@ public class Servlet extends HttpServlet {
 		/* select and perform the respective benchmark */
 		switch (testCase) {
 		case "concatStringsPlus":
-			benchmark(Performer::concatStringsWithPlus);
+			benchmark(Servlet::concatStringsWithPlus);
 			break;
 		case "concatStringsBuilder":
-			benchmark(Performer::concatStringsWithBuilder);
+			benchmark(Servlet::concatStringsWithBuilder);
 			break;
 		case "concatManyStringsPlus":
-			benchmark(Performer::concatManyStringsWithPlus);
+			benchmark(Servlet::concatManyStringsWithPlus);
 			break;
 		case "concatManyStringsBuilder":
-			benchmark(Performer::concatManyStringsWithBuilder);
+			benchmark(Servlet::concatManyStringsWithBuilder);
 			break;
 		}
 
@@ -110,7 +111,7 @@ public class Servlet extends HttpServlet {
 			printWriter.print("Garbage Collection vor dem Benchmark<br>\n");
 		}
 		if (sleep) {
-			printWriter.print("Schlafe 1 ms bei jedem Durchlauf<br>\n");
+			printWriter.print("Pausiere 1 ms bei jedem Durchlauf<br>\n");
 		}
 		printWriter.print(
 				"</p>\n" +
@@ -215,6 +216,4 @@ public class Servlet extends HttpServlet {
 		}
 		return 42;
 	}
-	
-	
 }
