@@ -4,9 +4,9 @@
 	<property name="source-dir" value="src/com/qmethods/performance_anti_pattern/"/>
 	<property name="build-dir" value="bin"/>
 	<property name="lib-file" location="lib/servlet-api.jar"/>
-	<property name="war-file" value="Performance-Anti-Pattern-Servlet.war"/>
-	<property name="web-xml" value="WebContent/WEB-INF/web.xml"/>
-	<property name="index-html" value="WebContent/index.html"/>
+	<property name="war-file" value="antipattern.war"/>
+	<property name="web-xml" value="web/WEB-INF/web.xml"/>
+	<property name="index-html" value="web/index.html"/>
 
 	
 	<target name="compile" description="Compile all source.">
@@ -19,7 +19,7 @@
 	<target name="build_war" depends="compile" description="Create a war file.">
 		<war warfile="${war-file}" webxml="${web-xml}">
 			<classes dir="${build-dir}"/>
-			<fileset file="WebContent/index.html"/>
+			<fileset file="${index-html}"/>
 		</war>
 		<delete dir="${build-dir}"/>
 	</target>
