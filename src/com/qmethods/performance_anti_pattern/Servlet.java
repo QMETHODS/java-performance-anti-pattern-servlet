@@ -26,7 +26,16 @@ public class Servlet extends HttpServlet {
 			"concatStringsPlus",
 			"concatStringsBuilder",
 			"concatManyStringsPlus",
-			"concatManyStringsBuilder"
+			"concatManyStringsBuilder",
+			"exception",
+			"staticException",
+			"noException",
+			"exceptionRecursion10",
+			"staticExceptionRecursion10",
+			"noExceptionRecursion10",
+			"exceptionRecursion100",
+			"staticExceptionRecursion100",
+			"noExceptionRecursion100"
 	};
 	
 	private static final Long WARMUP = 20000L;
@@ -87,6 +96,33 @@ public class Servlet extends HttpServlet {
 			break;
 		case "concatManyStringsBuilder":
 			benchmark(Servlet::concatManyStringsWithBuilder);
+			break;
+		case "exception":
+			benchmark(Servlet::exceptionAsControlFlow);
+			break;
+		case "staticException":
+			benchmark(Servlet::staticExceptionAsControlFlow);
+			break;
+		case "noException":
+			benchmark(Servlet::regularControlFlow);
+			break;
+		case "exceptionRecursion10":
+			benchmark(Servlet::exceptionAsControlFlowRecursion10);
+			break;
+		case "staticExceptionRecursion10":
+			benchmark(Servlet::staticExceptionAsControlFlowRecursion10);
+			break;
+		case "noExceptionRecursion10":
+			benchmark(Servlet::regularControlFlowRecursion10);
+			break;
+		case "exceptionRecursion100":
+			benchmark(Servlet::exceptionAsControlFlowRecursion100);
+			break;
+		case "staticExceptionRecursion100":
+			benchmark(Servlet::staticExceptionAsControlFlowRecursion100);
+			break;
+		case "noExceptionRecursion100":
+			benchmark(Servlet::regularControlFlowRecursion100);
 			break;
 		}
 
@@ -157,8 +193,36 @@ public class Servlet extends HttpServlet {
 			}
 		}
 	}
-	
-	
+
+	/**
+	 * Higher order function to increase the function call stack.
+	 * 
+	 * @param depth How many recursive calls shall be made.
+	 * @param func The load function that eventually shall be called.
+	 * @param runs Required by the load function, simply passed on.
+	 */
+	private static void addRecursion(int depth, Function<Long,Integer> func, Long runs) {
+		if (depth == 0) {
+			func.apply(runs);
+		} else {
+			addRecursion(depth - 1, func, runs);
+		}
+	}
+
+	/**
+	 * Custom exception class without special capabilities.  
+	 */
+	static class FlowException extends Exception {
+		private static final long serialVersionUID = 3564515923514860472L;
+
+		public FlowException() {
+		}
+
+		public FlowException(String message) {
+			super(message);
+		}
+	}
+
 	/* * * LOAD GENERATING METHODS * * */
 	/* Must fulfill the signature: static Integer someName (Long) */ 
 	
@@ -214,6 +278,71 @@ public class Servlet extends HttpServlet {
 			String str = builder.toString();
 			doSleep();
 		}
+		return 42;
+	}
+	
+	private static Integer exceptionAsControlFlow(Long runs) {
+		for (long run = 0; run < runs; ++run) {
+			try {
+				throw new FlowException();
+			} catch (FlowException e) {
+				// goto here
+			}
+			doSleep();
+		}
+		return 42;
+	}
+
+	private static Integer staticExceptionAsControlFlow(Long runs) {
+		FlowException ex = new FlowException();
+		for (long run = 0; run < runs; ++run) {
+			try {
+				throw ex;
+			} catch (FlowException e) {
+				// goto here
+			}
+			doSleep();
+		}
+		return 42;
+	}
+
+	private static Integer regularControlFlow(Long runs) {
+		boolean foo = true;;
+		for (long run = 0; run < runs; ++run) {
+			if (foo) foo = false;
+			else     foo = true;
+			doSleep();
+		}
+		return 42;
+	}
+
+	private static Integer exceptionAsControlFlowRecursion10(Long runs) {
+		addRecursion(10, Servlet::exceptionAsControlFlow, runs);
+		return 42;
+	}
+
+	private static Integer staticExceptionAsControlFlowRecursion10(Long runs) {
+		addRecursion(10, Servlet::staticExceptionAsControlFlow, runs);
+		return 42;
+	}
+
+	private static Integer regularControlFlowRecursion10(Long runs) {
+		addRecursion(10, Servlet::regularControlFlow, runs);
+		return 42;
+	}
+	
+	private static Integer exceptionAsControlFlowRecursion100(Long runs) {
+		addRecursion(100, Servlet::exceptionAsControlFlow, runs);
+		return 42;
+	}
+
+	private static Integer staticExceptionAsControlFlowRecursion100(Long runs) {
+		addRecursion(100, Servlet::staticExceptionAsControlFlow, runs);
+		return 42;
+	}
+
+	private static Integer regularControlFlowRecursion100(Long runs) {
+		addRecursion(100, Servlet::regularControlFlow, runs);
 		return 42;
 	}
 }
