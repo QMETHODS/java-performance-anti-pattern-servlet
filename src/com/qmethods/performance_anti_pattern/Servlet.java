@@ -1,8 +1,16 @@
 package com.qmethods.performance_anti_pattern;
 
+import java.awt.Point;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.function.Function;
 
 import javax.servlet.ServletException;
@@ -35,7 +43,11 @@ public class Servlet extends HttpServlet {
 			"noExceptionRecursion10",
 			"exceptionRecursion100",
 			"staticExceptionRecursion100",
-			"noExceptionRecursion100"
+			"noExceptionRecursion100",
+			"microServiceDirect",
+			"microServiceLocal",
+			"microServiceLocalOtherTomcat",
+			"microServiceRemote"
 	};
 	
 	private static final Long WARMUP = 20000L;
@@ -54,6 +66,12 @@ public class Servlet extends HttpServlet {
 		response.setContentType("text/html");
 		PrintWriter printWriter = response.getWriter();
 
+		/* check if servlet is used to respond to a micro call */
+		if (request.getParameter("microcall") != null) {
+			printWriter.print(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
+			return;
+		}
+		
 		/* get global parameters and check for validity */
 		String testCase = request.getParameter("case");
 		int magnitude;
@@ -123,6 +141,18 @@ public class Servlet extends HttpServlet {
 			break;
 		case "noExceptionRecursion100":
 			benchmark(Servlet::regularControlFlowRecursion100);
+			break;
+		case "microServiceDirect":
+			benchmark(Servlet::microserviceDirect);
+			break;
+		case "microServiceLocal":
+			benchmark(Servlet::microserviceLocal);
+			break;
+		case "microServiceLocalOtherTomcat":
+			benchmark(Servlet::microserviceLocalOtherTomcat);
+			break;
+		case "microServiceRemote":
+			benchmark(Servlet::microserviceRemote);
 			break;
 		}
 
@@ -284,7 +314,15 @@ public class Servlet extends HttpServlet {
 	private static Integer exceptionAsControlFlow(Long runs) {
 		for (long run = 0; run < runs; ++run) {
 			try {
-				throw new FlowException();
+//				int sum = 0;
+//				for (int row = 0; row < 100; ++row) {
+//					for (int col = 0; col < 100; ++col) {
+//						sum += row + col;
+//						if (sum >= 1000) {
+							throw new FlowException();
+//						}
+//					}
+//				}
 			} catch (FlowException e) {
 				// goto here
 			}
@@ -297,7 +335,15 @@ public class Servlet extends HttpServlet {
 		FlowException ex = new FlowException();
 		for (long run = 0; run < runs; ++run) {
 			try {
-				throw ex;
+//				int sum = 0;
+//				for (int row = 0; row < 100; ++row) {
+//					for (int col = 0; col < 100; ++col) {
+//						sum += row + col;
+//						if (sum >= 1000) {
+							throw ex;
+//						}
+//					}
+//				}
 			} catch (FlowException e) {
 				// goto here
 			}
@@ -309,8 +355,16 @@ public class Servlet extends HttpServlet {
 	private static Integer regularControlFlow(Long runs) {
 		boolean foo = true;;
 		for (long run = 0; run < runs; ++run) {
+
 			if (foo) foo = false;
 			else     foo = true;
+			
+//			int sum = 0;
+//			for (int row = 0; row < 100 && sum < 1000; ++row) {
+//				for (int col = 0; col < 100 && sum < 1000; ++col) {
+//					sum += row + col;
+//				}
+//			}
 			doSleep();
 		}
 		return 42;
@@ -345,4 +399,92 @@ public class Servlet extends HttpServlet {
 		addRecursion(100, Servlet::regularControlFlow, runs);
 		return 42;
 	}
+	
+	private static Integer microserviceDirect(Long runs) {
+		String res = null;
+		for (long run = 0; run < runs; ++run) {
+			res = fakeMicroservice();
+			doSleep();
+		}
+		return 42 + (res.equals("response") ? 23 : 42);
+	}
+	
+	private static String fakeMicroservice() {
+		return (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
+	}
+	
+	private static Integer microserviceLocal(Long runs) {
+		final String url = "http://localhost:8080/Performance-Anti-Pattern-Servlet/Servlet?microcall=on";
+		String res = null;
+		for (long run = 0; run < runs; ++run) {
+			res = callMicroservice(url);
+			
+			doSleep();
+		}
+		return 42 + (res.equals("response") ? 23 : 42);
+	}
+	
+	private static Integer microserviceLocalOtherTomcat(Long runs) {
+		final String url = "http://localhost:8081/Performance-Anti-Pattern-Servlet/Servlet?microcall=on";
+		String res = null;
+		for (long run = 0; run < runs; ++run) {
+			res = callMicroservice(url);
+			
+			doSleep();
+		}
+		return 42 + (res.equals("response") ? 23 : 42);
+	}
+	
+	// use IP as the dns lookup of computer name does not work here (but in browser it does)
+	private static Integer microserviceRemote(Long runs) {
+		final String url = "http://192.168.0.133:8080/Performance-Anti-Pattern-Servlet/Servlet?microcall=on";
+		String res = null;
+		for (long run = 0; run < runs; ++run) {
+			res = callMicroservice(url);
+			
+			doSleep();
+		}
+		return 42 + (res.equals("response") ? 23 : 42);
+	}
+
+	/*
+	 * The TCP connection stays alive although the HttpURLConnection object is not reusable.
+	 * https://docs.oracle.com/javase/8/docs/technotes/guides/net/http-keepalive.html
+	 */
+    private static String callMicroservice (final String address) {
+		try {
+			URL url = new URL(address);
+
+	        // make connection
+	        HttpURLConnection connec = (HttpURLConnection) url.openConnection();
+
+	        // use GET method
+	        connec.setDoOutput(true);
+	        connec.setDoInput(true);
+	        connec.setInstanceFollowRedirects(false); 
+	        connec.setRequestMethod("GET"); 
+	        connec.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+	        connec.setRequestProperty("charset", "utf-8");
+	        connec.setUseCaches (false);
+
+	        BufferedReader in = new BufferedReader(new InputStreamReader(connec.getInputStream()));
+	        String inputLine;
+	        StringBuilder response = new StringBuilder();
+
+	        while ((inputLine = in.readLine()) != null) {
+	            response.append(inputLine);
+	        }
+	        in.close();
+
+	        //print result
+//	        System.out.println(response.toString());
+	        return response.toString();
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+	        return "fail";
+		} catch (IOException e) {
+			e.printStackTrace();
+	        return "fail";
+		}
+    }
 }
